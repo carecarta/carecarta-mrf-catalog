@@ -53,9 +53,9 @@ One row represents one MRF associated with a facility. The underlying MRF itself
 | `mrf_id` | String | Stable CareCarta identifier for the MRF record. |
 | `facility_id` | String | Foreign key referencing `facilities.csv`. |
 | `is_current` | Boolean | Whether the MRF was considered current in this catalog snapshot. |
-| `mrf_url` | URL | Hospital-hosted URL observed for the MRF. The URL may redirect or change after publication. |
-| `mrf_page_url` | URL | Hospital price-transparency page associated with the MRF. This can be used when the direct file URL changes. |
-| `cms_hpt_txt_url` | URL | Public URL of the hospital's CMS-required `cms-hpt.txt` discovery document associated with the MRF. The same document may be shared by multiple MRF records. |
+| `mrf_url` | URL | Direct MRF URL declared by the matched `cms-hpt.txt` entry when `cms_hpt_txt_url` is populated. Otherwise, the catalog retains the previously observed endpoint while discovery remains unresolved. |
+| `mrf_page_url` | URL | Source-page URL declared by the matched `cms-hpt.txt` entry when available. Otherwise, the catalog retains the previously observed page. |
+| `cms_hpt_txt_url` | URL | Confirmed URL of the CMS-required `cms-hpt.txt` discovery document associated with the MRF. The same document may contain entries for multiple facilities and MRF records. |
 | `file_name` | String | Published or observed file name. |
 | `file_format` | String | File extension or machine-readable format, such as `csv`, `json`, or `zip`. |
 | `file_type` | String | General CareCarta classification of the file, such as `spreadsheet`, `structured`, or `compressed`. |
@@ -82,6 +82,14 @@ One row summarizes catalog coverage for a state, the District of Columbia, or a 
 Pull requests are checked for schema consistency, unique identifiers, valid facility references, URL syntax, deterministic ordering, coverage totals, and agreement with `metadata.json`.
 
 An empty optional field means the catalog does not contain a confirmed value for that record. It does not establish that the corresponding hospital resource does not exist.
+
+## Canonical endpoint policy
+
+The catalog uses the publication path defined by the federal Hospital Price Transparency requirements. When a `cms-hpt.txt` document and its hospital-location entry can be matched confidently, the entry's `mrf-url` and `source-page-url` determine the catalog's endpoint fields.
+
+Alternative observations may assist discovery, but they do not replace the URLs declared through a confirmed `cms-hpt.txt` entry. If the required discovery document is unavailable, malformed, ambiguous, or cannot be matched confidently, the catalog does not infer replacement endpoint values.
+
+When a declared MRF URL replaces a previously observed URL, URL-derived file metadata is refreshed where the format is unambiguous, and the prior file size is cleared until the declared file is measured directly.
 
 ## Releases
 
