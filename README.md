@@ -59,7 +59,6 @@ One row represents one MRF associated with a facility. The underlying MRF itself
 | `file_format` | String | File extension or machine-readable format, such as `csv`, `json`, or `zip`. |
 | `file_type` | String | General CareCarta classification of the file, such as `spreadsheet`, `structured`, or `compressed`. |
 | `file_size_bytes` | Integer | Observed file size in bytes, when available. |
-| `observed_at` | Datetime | ISO 8601 timestamp associated with the observed file record. This is not necessarily the hospital's stated update date. |
 | `is_converted_copy` | Boolean | Whether the cataloged file was identified as a converted copy rather than the original published representation. |
 
 ## `coverage.csv`
@@ -75,7 +74,7 @@ One row summarizes catalog coverage for a state, the District of Columbia, or a 
 
 ## Snapshot metadata
 
-`data/metadata.json` records the catalog schema version, publisher, snapshot timestamp, and total counts. The timestamp applies to the catalog release as a whole; individual MRF observations are recorded in `mrf_files.csv`.
+`data/metadata.json` records the catalog schema version, publisher, snapshot timestamp, and total counts. The timestamp applies to the catalog release as a whole.
 
 ## Releases
 
