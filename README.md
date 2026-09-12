@@ -55,6 +55,7 @@ One row represents one MRF associated with a facility. The underlying MRF itself
 | `is_current` | Boolean | Whether the MRF was considered current in this catalog snapshot. |
 | `mrf_url` | URL | Hospital-hosted URL observed for the MRF. The URL may redirect or change after publication. |
 | `mrf_page_url` | URL | Hospital price-transparency page associated with the MRF. This can be used when the direct file URL changes. |
+| `cms_hpt_txt_url` | URL | Public URL of the hospital's CMS-required `cms-hpt.txt` discovery document associated with the MRF. The same document may be shared by multiple MRF records. |
 | `file_name` | String | Published or observed file name. |
 | `file_format` | String | File extension or machine-readable format, such as `csv`, `json`, or `zip`. |
 | `file_type` | String | General CareCarta classification of the file, such as `spreadsheet`, `structured`, or `compressed`. |
@@ -76,6 +77,14 @@ One row summarizes catalog coverage for a state, the District of Columbia, or a 
 
 `data/metadata.json` records the catalog schema version, publisher, snapshot timestamp, and total counts. The timestamp applies to the catalog release as a whole.
 
+## Validation
+
+Pull requests are checked for schema consistency, unique identifiers, valid facility references, URL syntax, deterministic ordering, coverage totals, and agreement with `metadata.json`.
+
+An empty optional field means the catalog does not contain a confirmed value for that record. It does not establish that the corresponding hospital resource does not exist.
+
 ## Releases
 
 Each release replaces the CSV artifacts with a new CareCarta catalog snapshot. Collection and normalization are maintained separately from this public data repository.
+
+Catalog updates include only confirmed mappings. Missing or ambiguous information does not replace an existing canonical value.
