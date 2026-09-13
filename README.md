@@ -9,7 +9,7 @@ The catalog helps researchers, developers, and the public find hospital-hosted M
 | File | Contents | Rows in current snapshot |
 | --- | --- | ---: |
 | `data/facilities.csv` | One row per hospital facility | 7,177 |
-| `data/mrf_files.csv` | One row per observed MRF file | 8,598 |
+| `data/mrf_files.csv` | One row per observed MRF file | 7,041 |
 | `data/coverage.csv` | Coverage totals by jurisdiction | 56 |
 | `data/metadata.json` | Snapshot date, schema version, and record totals | — |
 
