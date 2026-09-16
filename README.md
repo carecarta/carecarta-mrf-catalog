@@ -87,6 +87,8 @@ An empty optional field means the catalog does not contain a confirmed value for
 
 The catalog uses the publication path defined by the federal Hospital Price Transparency requirements. When a `cms-hpt.txt` document and its hospital-location entry can be matched confidently, the entry's `mrf-url` and `source-page-url` determine the catalog's endpoint fields.
 
+`cms_hpt_txt_url` is the canonical discovery endpoint. `mrf_url` and `mrf_page_url` preserve the endpoints that document declared when this catalog snapshot was observed; they are useful direct links, but are not a claim that the hospital has not changed them since. Consumers that need the current declared MRF should fetch and parse `cms_hpt.txt` again rather than treating the catalog's stored MRF URL as permanently authoritative.
+
 Alternative observations may assist discovery, but they do not replace the URLs declared through a confirmed `cms-hpt.txt` entry. If the required discovery document is unavailable, malformed, ambiguous, or cannot be matched confidently, the catalog does not infer replacement endpoint values.
 
 When a declared MRF URL replaces a previously observed URL, URL-derived file metadata is refreshed where the format is unambiguous, and the prior file size is cleared until the declared file is measured directly.
