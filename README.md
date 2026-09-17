@@ -10,6 +10,8 @@ The catalog helps researchers, developers, and the public find hospital-hosted M
 | --- | --- | ---: |
 | `data/facilities.csv` | One row per hospital facility | 7,177 |
 | `data/mrf_files.csv` | One row per observed MRF file | 7,041 |
+| `data/hospitals.csv` | One row per hospital the federal rule applies to | 5,966 |
+| `data/facility_registry_map.csv` | Which facility belongs to which hospital | 5,624 |
 | `data/coverage.csv` | Coverage totals by jurisdiction | 56 |
 | `data/metadata.json` | Snapshot date, schema version, and record totals | — |
 
@@ -61,6 +63,50 @@ One row represents one MRF associated with a facility. The underlying MRF itself
 | `file_type` | String | General CareCarta classification of the file, such as `spreadsheet`, `structured`, or `compressed`. |
 | `file_size_bytes` | Integer | Observed file size in bytes, when available. |
 | `is_converted_copy` | Boolean | Whether the cataloged file was identified as a converted copy rather than the original published representation. |
+
+## `hospitals.csv`
+
+One row represents one hospital the federal price transparency rule applies to.
+
+This file answers a different question from `facilities.csv`. `facilities.csv` records places where
+a price file was seen, which includes locations that are not hospitals in their own right, such as
+an outpatient department operating under a hospital's licence. `hospitals.csv` is the list of
+hospitals that must publish a file, so it is the list to measure compliance against.
+
+It is built from the CMS Provider of Services file, keeping the hospitals 45 CFR 180.30 applies to
+and removing those the rule deems compliant: hospitals run by the Department of Veterans Affairs or
+the Department of Defense, hospitals run by an Indian Health Program, and hospitals treating only
+people in the custody of penal authorities.
+
+The rule applies to hospitals licensed by a state, which is not the same group as hospitals
+certified to bill Medicare. A hospital holding a state licence that does not bill Medicare does not
+appear in the CMS file and is added by hand instead. Treat this list as a solid floor rather than
+the final word.
+
+| Column | Type | Description |
+| --- | --- | --- |
+| `ccn` | String | CMS Certification Number. Present for every row taken from CMS data. Read as text to preserve leading zeros. |
+| `hospital_name` | String | Published name of the hospital. |
+| `city` | String | City in which the hospital is located. |
+| `state` | String | Two-letter state, district, or territory code. |
+| `postal_code` | String | ZIP or postal code. Read as text to preserve leading zeros. |
+| `provider_type` | String | Kind of hospital, such as `short_term_acute`, `critical_access`, `psychiatric`, `rehabilitation`, `long_term_care`, `childrens`, or `rural_emergency`. |
+| `bed_count` | Integer | Certified beds, when available. |
+| `basis` | String | Where the row came from: `cms_pos` for CMS data, or `manual_supplement` for one added by hand. |
+
+## `facility_registry_map.csv`
+
+One row links a facility in `facilities.csv` to the hospital in `hospitals.csv` it belongs to.
+
+Several facilities can point at one hospital, because a hospital may run several locations under a
+single licence. A facility appears here only when the two records share a CMS Certification Number,
+so a facility with no confident match is simply absent rather than guessed at.
+
+| Column | Type | Description |
+| --- | --- | --- |
+| `facility_id` | String | Foreign key referencing `facilities.csv`. |
+| `ccn` | String | Foreign key referencing `hospitals.csv`. |
+| `match_basis` | String | How the link was made. Always `CCN` today. |
 
 ## `coverage.csv`
 
