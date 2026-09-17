@@ -48,7 +48,28 @@ SCHEMAS = {
         "facility_count",
         "mrf_file_count",
     ],
+    "hospitals.csv": [
+        "ccn",
+        "hospital_name",
+        "city",
+        "state",
+        "postal_code",
+        "provider_type",
+        "bed_count",
+        "basis",
+    ],
+    "facility_registry_map.csv": [
+        "facility_id",
+        "ccn",
+        "match_basis",
+    ],
 }
+
+# hospitals.csv lists the hospitals the price transparency rule applies to, and
+# facility_registry_map.csv says which observed facility belongs to which of them. They are
+# optional until the first registry snapshot is published, but neither is meaningful alone.
+REGISTRY_BASES = {"cms_pos", "manual_supplement"}
+REQUIRED_HOSPITAL_FIELDS = {"hospital_name", "state", "provider_type", "basis"}
 
 REQUIRED_FACILITY_FIELDS = {"facility_id", "hospital_name", "state"}
 REQUIRED_MRF_FIELDS = {
@@ -102,6 +123,76 @@ def require_unique_sorted(
         errors.append(f"{filename}: {field} values are not unique")
     if values != sorted(values):
         errors.append(f"{filename}: rows are not sorted by {field}")
+
+
+def validate_registry(facility_ids: set[str]) -> list[str]:
+    """Check the hospital registry and its mapping to observed facilities.
+
+    The registry and the catalog are refreshed on different schedules by different processes, so
+    the mapping between them is the part most likely to rot. Both files are checked only when
+    present, which lets this validation merge before the first registry snapshot does.
+    """
+    errors: list[str] = []
+    has_hospitals = (DATA / "hospitals.csv").exists()
+    has_map = (DATA / "facility_registry_map.csv").exists()
+    if not has_hospitals and not has_map:
+        return errors
+    if not has_hospitals:
+        return ["facility_registry_map.csv: present without hospitals.csv"]
+
+    hospitals = read_csv("hospitals.csv", errors)
+    keys = []
+    seen: set[tuple[str, ...]] = set()
+    for row_number, row in enumerate(hospitals, start=2):
+        for field in REQUIRED_HOSPITAL_FIELDS:
+            if not row[field]:
+                errors.append(f"hospitals.csv:{row_number}: {field} is required")
+        if row["basis"] not in REGISTRY_BASES:
+            errors.append(
+                f"hospitals.csv:{row_number}: basis must be one of {sorted(REGISTRY_BASES)}"
+            )
+        # A hospital derived from CMS data is identified by its certification number. One added by
+        # hand may have none, because a hospital can hold a state licence without billing Medicare.
+        if row["basis"] == "cms_pos" and not row["ccn"]:
+            errors.append(f"hospitals.csv:{row_number}: ccn is required for cms_pos rows")
+        if row["bed_count"]:
+            try:
+                int(row["bed_count"])
+            except ValueError:
+                errors.append(f"hospitals.csv:{row_number}: bed_count is not an integer")
+        identity = (
+            ("ccn", row["ccn"])
+            if row["ccn"]
+            else ("name", row["hospital_name"], row["state"], row["postal_code"])
+        )
+        if identity in seen:
+            errors.append(f"hospitals.csv:{row_number}: duplicate hospital {identity}")
+        seen.add(identity)
+        keys.append((row["basis"], row["ccn"], row["hospital_name"], row["state"]))
+    if keys != sorted(keys):
+        errors.append("hospitals.csv: rows are not sorted by basis, ccn, hospital_name, state")
+
+    known_ccns = {row["ccn"] for row in hospitals if row["ccn"]}
+    if not has_map:
+        return errors
+
+    mapping = read_csv("facility_registry_map.csv", errors)
+    facility_column = [row["facility_id"] for row in mapping]
+    if len(facility_column) != len(set(facility_column)):
+        errors.append("facility_registry_map.csv: facility_id values are not unique")
+    # Grouped by hospital rather than by facility, so one hospital's locations read together.
+    order = [(row["ccn"], row["facility_id"]) for row in mapping]
+    if order != sorted(order):
+        errors.append("facility_registry_map.csv: rows are not sorted by ccn, facility_id")
+    for row_number, row in enumerate(mapping, start=2):
+        name = "facility_registry_map.csv"
+        if row["match_basis"] != "CCN":
+            errors.append(f"{name}:{row_number}: match_basis must be CCN")
+        if row["facility_id"] not in facility_ids:
+            errors.append(f"{name}:{row_number}: facility_id is not in facilities.csv")
+        if row["ccn"] not in known_ccns:
+            errors.append(f"{name}:{row_number}: ccn is not in hospitals.csv")
+    return errors
 
 
 def validate() -> list[str]:
@@ -187,12 +278,17 @@ def validate() -> list[str]:
         if row["mrf_file_count"] != str(mrf_counts[jurisdiction]):
             errors.append(f"coverage.csv: mrf_file_count mismatch for {jurisdiction}")
 
+    errors.extend(validate_registry(facility_ids))
+
     metadata = json.loads((DATA / "metadata.json").read_text(encoding="utf-8"))
     expected_metadata = {
         "facility_count": len(facilities),
         "mrf_file_count": len(mrf_files),
         "jurisdiction_count": len(coverage),
     }
+    if (DATA / "hospitals.csv").exists():
+        hospitals = read_csv("hospitals.csv", [])
+        expected_metadata["hospital_count"] = len(hospitals)
     for field, expected in expected_metadata.items():
         if metadata.get(field) != expected:
             errors.append(
