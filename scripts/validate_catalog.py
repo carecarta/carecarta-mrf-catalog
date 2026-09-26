@@ -28,6 +28,7 @@ SCHEMAS = {
         "latitude",
         "longitude",
         "hospital_website",
+        "cms_hpt_txt_url",
     ],
     "mrf_files.csv": [
         "mrf_id",
@@ -35,7 +36,6 @@ SCHEMAS = {
         "is_current",
         "mrf_url",
         "mrf_page_url",
-        "cms_hpt_txt_url",
         "file_name",
         "file_format",
         "file_type",
@@ -46,6 +46,7 @@ SCHEMAS = {
         "jurisdiction",
         "jurisdiction_type",
         "facility_count",
+        "cms_hpt_txt_facility_count",
         "mrf_file_count",
     ],
     "hospitals.csv": [
@@ -227,6 +228,12 @@ def validate() -> list[str]:
                     errors.append(f"facilities.csv:{row_number}: {field} is not numeric")
         if row["hospital_website"] and not is_catalog_url(row["hospital_website"]):
             errors.append(f"facilities.csv:{row_number}: invalid hospital_website")
+        if row["cms_hpt_txt_url"] and not is_catalog_url(row["cms_hpt_txt_url"]):
+            errors.append(f"facilities.csv:{row_number}: invalid cms_hpt_txt_url")
+
+    # A facility that publishes a cms-hpt.txt declares its MRF there. A stored copy of that URL
+    # goes stale when the hospital moves the file, so such a facility carries no MRF row.
+    txt_facilities = {row["facility_id"] for row in facilities if row["cms_hpt_txt_url"]}
 
     for row_number, row in enumerate(mrf_files, start=2):
         for field in REQUIRED_MRF_FIELDS:
@@ -236,6 +243,11 @@ def validate() -> list[str]:
             errors.append(f"mrf_files.csv:{row_number}: invalid mrf_id")
         if row["facility_id"] not in facility_ids:
             errors.append(f"mrf_files.csv:{row_number}: unknown facility_id")
+        if row["facility_id"] in txt_facilities:
+            errors.append(
+                f"mrf_files.csv:{row_number}: facility has a cms_hpt_txt_url, so its MRF is "
+                "declared there and must not be stored"
+            )
         for field in BOOLEAN_FIELDS:
             if row[field] not in {"true", "false"}:
                 errors.append(f"mrf_files.csv:{row_number}: {field} must be true or false")
@@ -245,12 +257,11 @@ def validate() -> list[str]:
             row["mrf_page_url"], allow_bare_domain=True
         ):
             errors.append(f"mrf_files.csv:{row_number}: invalid mrf_page_url")
-        if row["cms_hpt_txt_url"] and not is_catalog_url(row["cms_hpt_txt_url"]):
-            errors.append(f"mrf_files.csv:{row_number}: invalid cms_hpt_txt_url")
         if row["file_size_bytes"] and not row["file_size_bytes"].isdigit():
             errors.append(f"mrf_files.csv:{row_number}: file_size_bytes is not an integer")
 
     facility_counts = Counter(row["state"] for row in facilities)
+    txt_counts = Counter(row["state"] for row in facilities if row["cms_hpt_txt_url"])
     mrf_counts = Counter(
         facilities_by_id[row["facility_id"]]["state"]
         for row in mrf_files
@@ -275,6 +286,8 @@ def validate() -> list[str]:
             errors.append(f"coverage.csv: invalid jurisdiction_type for {jurisdiction}")
         if row["facility_count"] != str(facility_count):
             errors.append(f"coverage.csv: facility_count mismatch for {jurisdiction}")
+        if row["cms_hpt_txt_facility_count"] != str(txt_counts[jurisdiction]):
+            errors.append(f"coverage.csv: cms_hpt_txt_facility_count mismatch for {jurisdiction}")
         if row["mrf_file_count"] != str(mrf_counts[jurisdiction]):
             errors.append(f"coverage.csv: mrf_file_count mismatch for {jurisdiction}")
 
@@ -284,7 +297,9 @@ def validate() -> list[str]:
     expected_metadata = {
         "facility_count": len(facilities),
         "mrf_file_count": len(mrf_files),
+        "cms_hpt_txt_facility_count": len(txt_facilities),
         "jurisdiction_count": len(coverage),
+        "schema_version": "3.0.0",
     }
     if (DATA / "hospitals.csv").exists():
         hospitals = read_csv("hospitals.csv", [])
