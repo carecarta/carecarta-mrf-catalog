@@ -11,7 +11,7 @@ The catalog helps researchers, developers, and the public find hospital-hosted M
 | `data/facilities.csv` | One row per hospital facility | 7,177 |
 | `data/mrf_files.csv` | One row per MRF for facilities with no `cms-hpt.txt` | 1,802 |
 | `data/hospitals.csv` | One row per hospital the federal rule applies to | 5,966 |
-| `data/facility_registry_map.csv` | Which facility belongs to which hospital | 5,624 |
+| `data/facility_registry_map.csv` | Which facility belongs to which hospital | 5,645 |
 | `data/coverage.csv` | Coverage totals by jurisdiction | 56 |
 | `data/metadata.json` | Snapshot date, schema version, and record totals | — |
 
