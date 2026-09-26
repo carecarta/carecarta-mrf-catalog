@@ -9,7 +9,7 @@ The catalog helps researchers, developers, and the public find hospital-hosted M
 | File | Contents | Rows in current snapshot |
 | --- | --- | ---: |
 | `data/facilities.csv` | One row per hospital facility | 7,177 |
-| `data/mrf_files.csv` | One row per observed MRF file | 7,041 |
+| `data/mrf_files.csv` | One row per MRF for facilities with no `cms-hpt.txt` | 1,802 |
 | `data/hospitals.csv` | One row per hospital the federal rule applies to | 5,966 |
 | `data/facility_registry_map.csv` | Which facility belongs to which hospital | 5,624 |
 | `data/coverage.csv` | Coverage totals by jurisdiction | 56 |
@@ -19,13 +19,19 @@ All CSV files are UTF-8 encoded, include a header row, and use standard CSV quot
 
 ## Using the data
 
-Join `mrf_files.csv` to `facilities.csv` using `facility_id`:
+A facility's price file is found one of two ways:
+
+- **It has a `cms_hpt_txt_url`** (5,239 facilities). Fetch that `cms-hpt.txt` and read the
+  facility's `mrf-url` from it. The catalog does not store that MRF URL, because hospitals move
+  their files and the TXT is where they declare the current one.
+- **It has no `cms_hpt_txt_url`**. Its MRF is in `mrf_files.csv`, joined on `facility_id`:
 
 ```text
 facilities.facility_id = mrf_files.facility_id
 ```
 
-A facility can have multiple MRF records. Use `mrf_id` as the unique key for an individual MRF record and `facility_id` as the unique key for a hospital facility.
+A facility never has both. Use `mrf_id` as the unique key for an MRF record and `facility_id` as
+the unique key for a hospital facility.
 
 ## `facilities.csv`
 
@@ -45,19 +51,20 @@ One row represents one hospital facility.
 | `latitude` | Decimal | Facility latitude in decimal degrees. |
 | `longitude` | Decimal | Facility longitude in decimal degrees. |
 | `hospital_website` | URL | Main public website for the hospital or facility. |
+| `cms_hpt_txt_url` | URL | Confirmed URL of the facility's CMS-required `cms-hpt.txt` discovery document, which declares its MRF. The same document may list several facilities. |
 
 ## `mrf_files.csv`
 
-One row represents one MRF associated with a facility. The underlying MRF itself is not stored in this repository.
+One row represents one MRF for a facility that has no `cms_hpt_txt_url`, so a stored URL is the
+only way to find its file. The underlying MRF itself is not stored in this repository.
 
 | Column | Type | Description |
 | --- | --- | --- |
 | `mrf_id` | String | Stable CareCarta identifier for the MRF record. |
 | `facility_id` | String | Foreign key referencing `facilities.csv`. |
 | `is_current` | Boolean | Whether the MRF was considered current in this catalog snapshot. |
-| `mrf_url` | URL | Direct MRF URL declared by the matched `cms-hpt.txt` entry when `cms_hpt_txt_url` is populated. Otherwise, the catalog retains the previously observed endpoint while discovery remains unresolved. |
-| `mrf_page_url` | URL | Source-page URL declared by the matched `cms-hpt.txt` entry when available. Otherwise, the catalog retains the previously observed page. |
-| `cms_hpt_txt_url` | URL | Confirmed URL of the CMS-required `cms-hpt.txt` discovery document associated with the MRF. The same document may contain entries for multiple facilities and MRF records. |
+| `mrf_url` | URL | Previously observed MRF endpoint. |
+| `mrf_page_url` | URL | Previously observed page linking to the MRF, when available. |
 | `file_name` | String | Published or observed file name. |
 | `file_format` | String | File extension or machine-readable format, such as `csv`, `json`, or `zip`. |
 | `file_type` | String | General CareCarta classification of the file, such as `spreadsheet`, `structured`, or `compressed`. |
@@ -117,7 +124,8 @@ One row summarizes catalog coverage for a state, the District of Columbia, or a 
 | `jurisdiction` | String | Two-letter jurisdiction code. |
 | `jurisdiction_type` | String | One of `state`, `district`, or `territory`. |
 | `facility_count` | Integer | Number of facilities represented in the jurisdiction. |
-| `mrf_file_count` | Integer | Number of MRF records represented in the jurisdiction. This can exceed `facility_count` because a facility may have multiple files. |
+| `cms_hpt_txt_facility_count` | Integer | Facilities whose MRF is found through a `cms-hpt.txt`. |
+| `mrf_file_count` | Integer | MRF records stored in `mrf_files.csv` for facilities without a `cms-hpt.txt`. |
 
 ## Snapshot metadata
 
@@ -133,11 +141,14 @@ An empty optional field means the catalog does not contain a confirmed value for
 
 The catalog uses the publication path defined by the federal Hospital Price Transparency requirements. When a `cms-hpt.txt` document and its hospital-location entry can be matched confidently, the entry's `mrf-url` and `source-page-url` determine the catalog's endpoint fields.
 
-`cms_hpt_txt_url` is the canonical discovery endpoint. `mrf_url` and `mrf_page_url` preserve the endpoints that document declared when this catalog snapshot was observed; they are useful direct links, but are not a claim that the hospital has not changed them since. Consumers that need the current declared MRF should fetch and parse `cms_hpt.txt` again rather than treating the catalog's stored MRF URL as permanently authoritative.
+`cms_hpt_txt_url` is the canonical discovery endpoint, and for a facility that has one it is the
+only endpoint the catalog records. Its MRF and source page are read from that document when
+needed. Storing a copy would invite someone to use it after the hospital had moved the file.
 
-Alternative observations may assist discovery, but they do not replace the URLs declared through a confirmed `cms-hpt.txt` entry. If the required discovery document is unavailable, malformed, ambiguous, or cannot be matched confidently, the catalog does not infer replacement endpoint values.
+`mrf_files.csv` holds a stored endpoint only for facilities with no known `cms-hpt.txt`.
 
-When a declared MRF URL replaces a previously observed URL, URL-derived file metadata is refreshed where the format is unambiguous, and the prior file size is cleared until the declared file is measured directly.
+Schema 3.0.0 made this change. Earlier releases also stored the TXT-declared MRF for facilities
+with a `cms_hpt_txt_url`, and kept `cms_hpt_txt_url` on `mrf_files.csv`.
 
 ## Releases
 
