@@ -1,10 +1,12 @@
 {
-  "schema_version": "3.0.0",
+  "schema_version": "3.1.0",
   "publisher": "CareCarta",
   "catalog_snapshot_at": "2026-09-13T18:14:46Z",
   "facility_count": 7177,
   "mrf_file_count": 1802,
   "hospital_count": 5966,
   "jurisdiction_count": 56,
-  "cms_hpt_txt_facility_count": 5239
+  "cms_hpt_txt_facility_count": 5239,
+  "type_2_npi_count": 4670,
+  "type_2_npi_source": "CMS Hospital Enrollments, 2026-07-31"
 }

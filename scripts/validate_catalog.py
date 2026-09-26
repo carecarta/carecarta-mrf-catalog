@@ -29,6 +29,7 @@ SCHEMAS = {
         "longitude",
         "hospital_website",
         "cms_hpt_txt_url",
+        "type_2_npi",
     ],
     "mrf_files.csv": [
         "mrf_id",
@@ -114,6 +115,18 @@ def is_catalog_url(value: str, *, allow_bare_domain: bool = False) -> bool:
     if parsed.scheme in {"http", "https"} and bool(parsed.netloc):
         return True
     return allow_bare_domain and not parsed.scheme and "." in parsed.path.split("/")[0]
+
+
+def npi_is_valid(value: str) -> bool:
+    """An NPI is ten digits whose last is a Luhn check over the number prefixed with 80840."""
+    if len(value) != 10 or not value.isdigit():
+        return False
+    total = 0
+    for index, digit in enumerate(int(d) for d in reversed("80840" + value)):
+        if index % 2 == 1:
+            digit = digit * 2 - 9 if digit > 4 else digit * 2
+        total += digit
+    return total % 10 == 0
 
 
 def require_unique_sorted(
@@ -230,6 +243,8 @@ def validate() -> list[str]:
             errors.append(f"facilities.csv:{row_number}: invalid hospital_website")
         if row["cms_hpt_txt_url"] and not is_catalog_url(row["cms_hpt_txt_url"]):
             errors.append(f"facilities.csv:{row_number}: invalid cms_hpt_txt_url")
+        if row["type_2_npi"] and not npi_is_valid(row["type_2_npi"]):
+            errors.append(f"facilities.csv:{row_number}: invalid type_2_npi")
 
     # A facility that publishes a cms-hpt.txt declares its MRF there. A stored copy of that URL
     # goes stale when the hospital moves the file, so such a facility carries no MRF row.
@@ -299,11 +314,14 @@ def validate() -> list[str]:
         "mrf_file_count": len(mrf_files),
         "cms_hpt_txt_facility_count": len(txt_facilities),
         "jurisdiction_count": len(coverage),
-        "schema_version": "3.0.0",
+        "schema_version": "3.1.0",
+        "type_2_npi_count": sum(1 for row in facilities if row["type_2_npi"]),
     }
     if (DATA / "hospitals.csv").exists():
         hospitals = read_csv("hospitals.csv", [])
         expected_metadata["hospital_count"] = len(hospitals)
+    if not metadata.get("type_2_npi_source"):
+        errors.append("metadata.json: type_2_npi_source must name the NPI source and release")
     for field, expected in expected_metadata.items():
         if metadata.get(field) != expected:
             errors.append(

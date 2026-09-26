@@ -52,6 +52,7 @@ One row represents one hospital facility.
 | `longitude` | Decimal | Facility longitude in decimal degrees. |
 | `hospital_website` | URL | Main public website for the hospital or facility. |
 | `cms_hpt_txt_url` | URL | Confirmed URL of the facility's CMS-required `cms-hpt.txt` discovery document, which declares its MRF. The same document may list several facilities. |
+| `type_2_npi` | String | The facility's organizational (Type 2) National Provider Identifier, from the CMS Hospital Enrollments file matched on `ccn`. Blank when the facility has no CCN, its CCN is not enrolled, or several facilities share its CCN. `metadata.json` names the release used. An MRF declares its hospital's Type 2 NPI, so this ties a price file to its facility. |
 
 ## `mrf_files.csv`
 
