@@ -129,6 +129,12 @@ def npi_is_valid(value: str) -> bool:
     return total % 10 == 0
 
 
+def ccn_missing_leading_zero(value: str) -> bool:
+    """A CCN is six characters. A five-digit one has lost the zero of its state code (060116 as
+    60116), which silently breaks every join on CCN."""
+    return len(value) == 5 and value.isdigit()
+
+
 def require_unique_sorted(
     rows: list[dict[str, str]], field: str, filename: str, errors: list[str]
 ) -> None:
@@ -243,6 +249,8 @@ def validate() -> list[str]:
             errors.append(f"facilities.csv:{row_number}: invalid hospital_website")
         if row["cms_hpt_txt_url"] and not is_catalog_url(row["cms_hpt_txt_url"]):
             errors.append(f"facilities.csv:{row_number}: invalid cms_hpt_txt_url")
+        if ccn_missing_leading_zero(row["ccn"]):
+            errors.append(f"facilities.csv:{row_number}: ccn {row['ccn']} is missing its leading zero")
         if row["type_2_npi"] and not npi_is_valid(row["type_2_npi"]):
             errors.append(f"facilities.csv:{row_number}: invalid type_2_npi")
 
