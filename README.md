@@ -13,6 +13,8 @@ The catalog helps researchers, developers, and the public find hospital-hosted M
 | `data/hospitals.csv` | One row per hospital the federal rule applies to | 5,966 |
 | `data/facility_display_names.csv` | Reader-friendly facility labels, keyed to `facilities.csv` | 7,177 |
 | `data/hospital_display_names.csv` | Reader-friendly hospital labels, keyed to `hospitals.csv` | 5,966 |
+| `data/facility_display_cities.csv` | Reader-friendly facility cities, keyed to `facilities.csv` | 7,177 |
+| `data/hospital_display_cities.csv` | Reader-friendly hospital cities, keyed to `hospitals.csv` | 5,966 |
 | `data/facility_registry_map.csv` | Which facility belongs to which hospital | 5,757 |
 | `data/coverage.csv` | Coverage totals by jurisdiction | 56 |
 | `data/metadata.json` | Snapshot date, schema version, and record totals | — |
@@ -44,6 +46,11 @@ The two display-name files provide presentation labels without changing the sour
 `hospital_name` so a catalog refresh that changes a source name is flagged for review.
 `display_name` may be the same for more than one record; the stable key identifies the record.
 Some labels expand source abbreviations, so they should not be used as identity evidence.
+
+The two display-city files work the same way: join their `key` columns to the facility ID or
+hospital CCN. Their `city` column repeats the source value, and `display_city` is for public
+presentation only. The original city and state remain the location evidence; a curated city
+must not change discovery or facility matching.
 
 ## `facilities.csv`
 
