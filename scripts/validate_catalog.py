@@ -15,6 +15,8 @@ ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data"
 
 SCHEMAS = {
+    "facility_display_names.csv": ["key", "hospital_name", "display_name"],
+    "hospital_display_names.csv": ["key", "hospital_name", "display_name"],
     "facilities.csv": [
         "facility_id",
         "hospital_name",
@@ -143,6 +145,27 @@ def require_unique_sorted(
         errors.append(f"{filename}: {field} values are not unique")
     if values != sorted(values):
         errors.append(f"{filename}: rows are not sorted by {field}")
+
+
+def validate_display_names(
+    filename: str, source_rows: list[dict[str, str]], source_key: str, errors: list[str]
+) -> None:
+    """Presentation labels must follow stable catalog keys, never replace identity names."""
+    rows = read_csv(filename, errors)
+    require_unique_sorted(rows, "key", filename, errors)
+    source_by_key = {row[source_key]: row["hospital_name"] for row in source_rows}
+    names_by_key = {row["key"]: row for row in rows}
+    missing = source_by_key.keys() - names_by_key.keys()
+    extra = names_by_key.keys() - source_by_key.keys()
+    if missing or extra:
+        errors.append(f"{filename}: {len(missing)} missing and {len(extra)} unknown keys")
+    for row_number, row in enumerate(rows, start=2):
+        key = row["key"]
+        if key in source_by_key and row["hospital_name"] != source_by_key[key]:
+            errors.append(f"{filename}:{row_number}: source hospital_name changed for {key}")
+        display = row["display_name"]
+        if not display or display != display.strip() or any(ord(c) < 32 for c in display):
+            errors.append(f"{filename}:{row_number}: invalid display_name for {key}")
 
 
 def validate_registry(facility_ids: set[str]) -> list[str]:
@@ -315,6 +338,11 @@ def validate() -> list[str]:
             errors.append(f"coverage.csv: mrf_file_count mismatch for {jurisdiction}")
 
     errors.extend(validate_registry(facility_ids))
+    validate_display_names("facility_display_names.csv", facilities, "facility_id", errors)
+    if (DATA / "hospitals.csv").exists():
+        validate_display_names(
+            "hospital_display_names.csv", read_csv("hospitals.csv", []), "ccn", errors
+        )
 
     metadata = json.loads((DATA / "metadata.json").read_text(encoding="utf-8"))
     expected_metadata = {
@@ -322,7 +350,7 @@ def validate() -> list[str]:
         "mrf_file_count": len(mrf_files),
         "cms_hpt_txt_facility_count": len(txt_facilities),
         "jurisdiction_count": len(coverage),
-        "schema_version": "3.1.0",
+        "schema_version": "3.2.0",
         "type_2_npi_count": sum(1 for row in facilities if row["type_2_npi"]),
     }
     if (DATA / "hospitals.csv").exists():

@@ -11,6 +11,8 @@ The catalog helps researchers, developers, and the public find hospital-hosted M
 | `data/facilities.csv` | One row per hospital facility | 7,177 |
 | `data/mrf_files.csv` | One row per MRF for facilities with no `cms-hpt.txt` | 1,802 |
 | `data/hospitals.csv` | One row per hospital the federal rule applies to | 5,966 |
+| `data/facility_display_names.csv` | Reader-friendly facility labels, keyed to `facilities.csv` | 7,177 |
+| `data/hospital_display_names.csv` | Reader-friendly hospital labels, keyed to `hospitals.csv` | 5,966 |
 | `data/facility_registry_map.csv` | Which facility belongs to which hospital | 5,757 |
 | `data/coverage.csv` | Coverage totals by jurisdiction | 56 |
 | `data/metadata.json` | Snapshot date, schema version, and record totals | — |
@@ -32,6 +34,16 @@ facilities.facility_id = mrf_files.facility_id
 
 A facility never has both. Use `mrf_id` as the unique key for an MRF record and `facility_id` as
 the unique key for a hospital facility.
+
+## Display names
+
+The two display-name files provide presentation labels without changing the source
+`hospital_name` values used for discovery, matching, and audit evidence. Join
+`facility_display_names.csv.key` to `facilities.csv.facility_id`, or
+`hospital_display_names.csv.key` to `hospitals.csv.ccn`. Each file repeats the original
+`hospital_name` so a catalog refresh that changes a source name is flagged for review.
+`display_name` may be the same for more than one record; the stable key identifies the record.
+Some labels expand source abbreviations, so they should not be used as identity evidence.
 
 ## `facilities.csv`
 
